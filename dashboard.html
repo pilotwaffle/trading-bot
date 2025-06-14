@@ -1,876 +1,100 @@
-// Trading page functions
-        async function loadTradingData() {
-            await loadMarketData();
-            await populateSymbolDropdown();
-        }
-        
-        async function populateSymbolDropdown() {
-            try {
-                const data = await apiCall('/api/market-data');
-                const select = document.getElementById('trade-symbol');
-                select.innerHTML = '<option value="">Select a cryptocurrency</option>';
-                
-                Object.keys(data.market_data).forEach(symbol => {
-                    const option = document.createElement('option');
-                    option.value = symbol;
-                    option.textContent = symbol;
-                    select.appendChild(option);
-                });
-            } catch (error) {
-                console.error('Failed to populate symbols:', error);
-            }
-        }
-        
-        async function executeTrade(event) {
-            event.preventDefault();
-            
-            const formData = new FormData(event.target);
-            const tradeData = {
-                symbol: formData.get('symbol'),
-                side: formData.get('side'),
-                amount: parseFloat(formData.get('amount')),
-                price: formData.get('price') ? parseFloat(formData.get('price')) : null
-            };
-            
-            try {
-                const result = await apiCall('/api/trade', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(tradeData)
-                });
-                
-                showAlert(result.message, 'success');
-                event.target.reset();
-                
-                // Refresh data
-                setTimeout(() => {
-                    loadPositions();
-                    loadPerformance();
-                }, 1000);
-                
-            } catch (error) {
-                showAlert(`Trade failed: ${error.message}`, 'error');
-            }
-        }
-        
-        // Positions page functions
-        async function loadPositions() {
-            try {
-                const data = await apiCall('/api/positions');
-                const container = document.getElementById('positions-content');
-                
-                if (data.positions.length === 0) {
-                    container.innerHTML = '<div class="loading">No open positions</div>';
-                    return;
-                }
-                
-                const table = `
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Symbol</th>
-                                <th>Amount</th>
-                                <th>Entry Price</th>
-                                <th>Current Price</th>
-                                <th>P&L</th>
-                                <th>Change %</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${data.positions.map(position => `
-                                <tr>
-                                    <td>${position.symbol}</td>
-                                    <td>${position.amount.toFixed(6)}</td>
-                                    <td>${formatCurrency(position.entry_price)}</td>
-                                    <td>${formatCurrency(position.current_price)}</td>
-                                    <td class="${getPercentageClass(position.unrealized_pnl)}">
-                                        ${formatCurrency(position.unrealized_pnl)}
-                                    </td>
-                                    <td class="${getPercentageClass(position.percentage_change)}">
-                                        ${formatPercentage(position.percentage_change)}
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-danger btn-sm" onclick="closePosition('${position.symbol}')">
-                                            Close
-                                        </button>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                `;
-                
-                container.innerHTML = table;
-            } catch (error) {
-                console.error('Failed to load positions:', error);
-                document.getElementById('positions-content').innerHTML = 
-                    '<div class="loading">Error loading positions</div>';
-            }
-        }
-        
-        async function closePosition(symbol) {
-            if (!confirm(`Are you sure you want to close position for ${symbol}?`)) {
-                return;
-            }
-            
-            try {
-                const result = await apiCall('/api/trade', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        symbol: symbol,
-                        side: 'sell',
-                        amount: 999999  // Sell all
-                    })
-                });
-                
-                showAlert(`Position closed: ${symbol}`, 'success');
-                loadPositions();
-                loadPerformance();
-            } catch (error) {
-                showAlert(`Failed to close position: ${error.message}`, 'error');
-            }
-        }
-        
-        // Crypto market page functions
-        async function loadCryptoMarket() {
-            try {
-                const data = await apiCall('/api/crypto-rankings');
-                const container = document.getElementById('crypto-grid');
-                
-                if (!data.rankings || data.rankings.length === 0) {
-                    container.innerHTML = '<div class="loading">No market data available</div>';
-                    return;
-                }
-                
-                const cryptoCards = data.rankings.map((crypto, index) => `
-                    <div class="crypto-card">
-                        <div class="crypto-symbol">#${index + 1} ${crypto.name}</div>
-                        <div class="crypto-price">${formatCurrency(crypto.price)}</div>
-                        <div class="crypto-change ${getPercentageClass(crypto.change_24h)}">
-                            ${formatPercentage(crypto.change_24h)}
-                        </div>
-                        <div style="font-size: 0.8rem; color: #8892b0; margin-top: 4px;">
-                            Vol: ${crypto.volume.toLocaleString()}
-                        </div>
-                    </div>
-                `).join('');
-                
-                container.innerHTML = cryptoCards;
-            } catch (error) {
-                console.error('Failed to load crypto market:', error);
-                document.getElementById('crypto-grid').innerHTML = 
-                    '<div class="loading">Error loading market data</div>';
-            }
-        }
-        
-        // Strategies page functions
-        async function loadStrategies() {
-            try {
-                const data = await apiCall('/api/strategies');
-                const container = document.getElementById('strategies-content');
-                
-                const strategiesHtml = data.strategies.map(strategy => `
-                    <div class="card" style="margin-bottom: 16px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <h4>${strategy.name} Strategy</h4>
-                                <p class="card-subtitle">
-                                    ${JSON.stringify(strategy.params)}
-                                </p>
-                            </div>
-                            <div>
-                                <button class="btn ${strategy.enabled ? 'btn-danger' : 'btn-success'}"
-                                        onclick="toggleStrategy('${strategy.name}')">
-                                    ${strategy.enabled ? 'Disable' : 'Enable'}
-                                </button>
-                            </div>
-                        </div>
-                        <div class="status-indicator ${strategy.enabled ? 'status-running' : 'status-stopped'}" 
-                             style="margin-top: 12px;">
-                            <span>●</span> ${strategy.enabled ? 'Active' : 'Inactive'}
-                        </div>
-                    </div>
-                `).join('');
-                
-                container.innerHTML = strategiesHtml;
-            } catch (error) {
-                console.error('Failed to load strategies:', error);
-                document.getElementById('strategies-content').innerHTML = 
-                    '<div class="loading">Error loading strategies</div>';
-            }
-        }
-        
-        async function toggleStrategy(strategyName) {
-            try {
-                const result = await apiCall(`/api/strategies/${strategyName}/toggle`, {
-                    method: 'POST'
-                });
-                
-                showAlert(`Strategy ${strategyName} ${result.enabled ? 'enabled' : 'disabled'}`, 'success');
-                loadStrategies();
-            } catch (error) {
-                showAlert(`Failed to toggle strategy: ${error.message}`, 'error');
-            }
-        }
-        
-        // ML training functions
-        async function loadMLStatus() {
-            try {
-                const data = await apiCall('/api/ml/status');
-                
-                document.getElementById('model-status').textContent = 
-                    data.is_trained ? 'Trained' : 'Not Trained';
-                document.getElementById('last-training').textContent = 
-                    data.last_training || 'Never';
-                document.getElementById('model-accuracy').textContent = 
-                    data.accuracy ? `${(data.accuracy * 100).toFixed(2)}%` : 'N/A';
-            } catch (error) {
-                console.error('Failed to load ML status:', error);
-            }
-        }
-        
-        async function trainMLModel(event) {
-            event.preventDefault();
-            
-            const formData = new FormData(event.target);
-            const requestData = {
-                days: parseInt(formData.get('days')),
-                symbols: []  // Use all available symbols
-            };
-            
-            try {
-                const result = await apiCall('/api/ml/train', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestData)
-                });
-                
-                showAlert(result.message, 'success');
-                
-                // Show progress
-                document.getElementById('training-progress').style.display = 'block';
-                simulateTrainingProgress();
-                
-            } catch (error) {
-                showAlert(`Training failed: ${error.message}`, 'error');
-            }
-        }
-        
-        function simulateTrainingProgress() {
-            const progressFill = document.getElementById('progress-fill');
-            const statusText = document.getElementById('training-status');
-            let progress = 0;
-            
-            const steps = [
-                'Preparing training data...',
-                'Loading historical data...',
-                'Feature engineering...',
-                'Training model...',
-                'Validating model...',
-                'Training complete!'
-            ];
-            
-            const interval = setInterval(() => {
-                progress += Math.random() * 20;
-                if (progress > 100) progress = 100;
-                
-                progressFill.style.width = `${progress}%`;
-                statusText.textContent = steps[Math.floor((progress / 100) * (steps.length - 1))];
-                
-                if (progress >= 100) {
-                    clearInterval(interval);
-                    setTimeout(() => {
-                        document.getElementById('training-progress').style.display = 'none';
-                        loadMLStatus();
-                    }, 2000);
-                }
-            }, 1000);
-        }
-        
-        // Chat functions
-        function handleChatKeyPress(event) {
-            if (event.key === 'Enter') {
-                sendChatMessage();
-            }
-        }
-        
-        async function sendChatMessage() {
-            const input = document.getElementById('chat-input');
-            const message = input.value.trim();
-            
-            if (!message) return;
-            
-            // Add user message to chat
-            addChatMessage('You', message);
-            input.value = '';
-            
-            try {
-                const result = await apiCall('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: message })
-                });
-                
-                // Add bot response to chat
-                addChatMessage('Bot', result.response);
-                
-            } catch (error) {
-                addChatMessage('System', `Error: ${error.message}`);
-            }
-        }
-        
-        function addChatMessage(user, message) {
-            const messagesContainer = document.getElementById('chat-messages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'chat-message';
-            
-            messageDiv.innerHTML = `
-                <div class="chat-user">${user}</div>
-                <div class="chat-text">${message}</div>
-                <div style="font-size: 0.8rem; color: #8892b0; margin-top: 4px;">
-                    ${new Date().toLocaleTimeString()}
-                </div>
-            `;
-            
-            messagesContainer.appendChild(messageDiv);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-        
-        function updateChatMessages(data) {
-            addChatMessage(data.user, data.message);
-            if (data.response) {
-                addChatMessage('Bot', data.response);
-            }
-        }
-        
-        // Analytics functions
-        async function loadAnalytics() {
-            try {
-                const data = await apiCall('/api/analytics/summary');
-                const container = document.getElementById('analytics-summary');
-                
-                const analyticsHtml = `
-                    <div class="metric">
-                        <span class="metric-label">Total Trades</span>
-                        <span class="metric-value neutral">${data.total_trades}</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Winning Trades</span>
-                        <span class="metric-value positive">${data.winning_trades}</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Win Rate</span>
-                        <span class="metric-value ${getPercentageClass(data.win_rate - 50)}">
-                            ${data.win_rate.toFixed(1)}%
-                        </span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Total P&L</span>
-                        <span class="metric-value ${getPercentageClass(data.total_pnl)}">
-                            ${formatCurrency(data.total_pnl)}
-                        </span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Average P&L</span>
-                        <span class="metric-value ${getPercentageClass(data.average_pnl)}">
-                            ${formatCurrency(data.average_pnl)}
-                        </span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Best Trade</span>
-                        <span class="metric-value positive">${formatCurrency(data.best_trade)}</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Worst Trade</span>
-                        <span class="metric-value negative">${formatCurrency(data.worst_trade)}</span>
-                    </div>
-                `;
-                
-                container.innerHTML = analyticsHtml;
-            } catch (error) {
-                console.error('Failed to load analytics:', error);
-                document.getElementById('analytics-summary').innerHTML = 
-                    '<div class="loading">Error loading analytics</div>';
-            }
-        }
-        
-        // Bot control functions
-        async function toggleBot() {
-            const button = document.getElementById('toggle-bot');
-            const isRunning = button.textContent.trim() === 'Stop Bot';
-            
-            try {
-                const endpoint = isRunning ? '/api/bot/stop' : '/api/bot/start';
-                const result = await apiCall(endpoint, { method: 'POST' });
-                
-                showAlert(result.message, 'success');
-                updateBotStatus(!isRunning);
-                
-            } catch (error) {
-                showAlert(`Failed to ${isRunning ? 'stop' : 'start'} bot: ${error.message}`, 'error');
-            }
-        }
-        
-        function updateBotStatus(running) {
-            const statusElement = document.getElementById('bot-status');
-            const buttonElement = document.getElementById('toggle-bot');
-            
-            if (running) {
-                statusElement.className = 'status-indicator status-running';
-                statusElement.innerHTML = '<span>●</span> Running';
-                buttonElement.textContent = 'Stop Bot';
-                buttonElement.className = 'btn btn-danger';
-            } else {
-                statusElement.className = 'status-indicator status-stopped';
-                statusElement.innerHTML = '<span>●</span> Stopped';
-                buttonElement.textContent = 'Start Bot';
-                buttonElement.className = 'btn btn-success';
-            }
-        }
-        
-        async function syncData() {
-            try {
-                showAlert('Syncing data...', 'success');
-                // Reload current page data
-                loadPageData(currentPage);
-            } catch (error) {
-                showAlert('Sync failed', 'error');
-            }
-        }
-        
-        // Market data functions
-        async function loadMarketData() {
-            try {
-                const data = await apiCall('/api/market-data');
-                updateMarketData(data.market_data);
-            } catch<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Industrial Crypto Trading Bot</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #0a0e27;
-            color: #ffffff;
-            overflow-x: hidden;
-        }
-        
-        .dashboard {
-            display: grid;
-            grid-template-columns: 280px 1fr;
-            min-height: 100vh;
-        }
-        
-        .sidebar {
-            background: linear-gradient(180deg, #1a1f3a 0%, #0f1322 100%);
-            border-right: 1px solid #2a2f4a;
-            padding: 20px;
-            overflow-y: auto;
-        }
-        
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 30px;
-            padding: 10px 0;
-            border-bottom: 1px solid #2a2f4a;
-        }
-        
-        .logo h1 {
-            font-size: 1.5rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .nav-menu {
-            list-style: none;
-        }
-        
-        .nav-item {
-            margin-bottom: 8px;
-        }
-        
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 16px;
-            color: #8892b0;
-            text-decoration: none;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        
-        .nav-link:hover, .nav-link.active {
-            background: rgba(102, 126, 234, 0.1);
-            color: #667eea;
-        }
-        
-        .main-content {
-            padding: 20px;
-            overflow-y: auto;
-            max-height: 100vh;
-        }
-        
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            padding: 20px 0;
-            border-bottom: 1px solid #2a2f4a;
-        }
-        
-        .header-title {
-            font-size: 2rem;
-            font-weight: 700;
-        }
-        
-        .header-controls {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-        
-        .status-indicator {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 600;
-        }
-        
-        .status-running {
-            background: rgba(16, 185, 129, 0.2);
-            color: #10b981;
-        }
-        
-        .status-stopped {
-            background: rgba(239, 68, 68, 0.2);
-            color: #ef4444;
-        }
-        
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-        }
-        
-        .btn-success {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-        }
-        
-        .btn-danger {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            color: white;
-        }
-        
-        .btn-secondary {
-            background: rgba(107, 114, 142, 0.2);
-            color: #8892b0;
-            border: 1px solid #2a2f4a;
-        }
-        
-        .grid {
-            display: grid;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .grid-3 {
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        }
-        
-        .grid-2 {
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-        }
-        
-        .card {
-            background: rgba(26, 31, 58, 0.8);
-            border: 1px solid #2a2f4a;
-            border-radius: 16px;
-            padding: 24px;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-        }
-        
-        .card:hover {
-            border-color: #667eea;
-            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.1);
-        }
-        
-        .card-header {
-            display: flex;
-            justify-content: between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        
-        .card-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: #ffffff;
-        }
-        
-        .card-subtitle {
-            color: #8892b0;
-            font-size: 0.9rem;
-            margin-top: 4px;
-        }
-        
-        .metric {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(42, 47, 74, 0.5);
-        }
-        
-        .metric:last-child {
-            border-bottom: none;
-        }
-        
-        .metric-label {
-            color: #8892b0;
-            font-size: 0.9rem;
-        }
-        
-        .metric-value {
-            font-weight: 600;
-            font-size: 1.1rem;
-        }
-        
-        .positive {
-            color: #10b981;
-        }
-        
-        .negative {
-            color: #ef4444;
-        }
-        
-        .neutral {
-            color: #ffffff;
-        }
-        
-        .crypto-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 15px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        
-        .crypto-card {
-            background: rgba(42, 47, 74, 0.3);
-            border: 1px solid #2a2f4a;
-            border-radius: 12px;
-            padding: 16px;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-        
-        .crypto-card:hover {
-            border-color: #667eea;
-            transform: translateY(-2px);
-        }
-        
-        .crypto-symbol {
-            font-weight: 700;
-            font-size: 1rem;
-            margin-bottom: 8px;
-        }
-        
-        .crypto-price {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        
-        .crypto-change {
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-        
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 16px;
-        }
-        
-        .table th,
-        .table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid rgba(42, 47, 74, 0.5);
-        }
-        
-        .table th {
-            color: #8892b0;
-            font-weight: 600;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .table td {
-            color: #ffffff;
-        }
-        
-        .table tr:hover {
-            background: rgba(42, 47, 74, 0.3);
-        }
-        
-        .chat-container {
-            display: flex;
-            flex-direction: column;
-            height: 400px;
-        }
-        
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-            background: rgba(15, 19, 34, 0.5);
-            border-radius: 8px;
-            margin-bottom: 16px;
-        }
-        
-        .chat-message {
-            margin-bottom: 16px;
-            padding: 12px;
-            border-radius: 8px;
-            background: rgba(42, 47, 74, 0.3);
-        }
-        
-        .chat-user {
-            font-weight: 600;
-            color: #667eea;
-            font-size: 0.9rem;
-        }
-        
-        .chat-text {
-            margin: 4px 0;
-            line-height: 1.4;
-        }
-        
-        .chat-response {
-            color: #10b981;
-            font-style: italic;
-            font-size: 0.9rem;
-        }
-        
-        .chat-input-container {
-            display: flex;
-            gap: 12px;
-        }
-        
-        .chat-input {
-            flex: 1;
-            padding: 12px;
-            background: rgba(42, 47, 74, 0.3);
-            border: 1px solid #2a2f4a;
-            border-radius: 8px;
-            color: #ffffff;
-            font-size: 14px;
-        }
-        
-        .chat-input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .form-group {
-            margin-bottom: 16px;
-        }
-        
-        .form-label {
-            display: block;
-            margin-bottom: 8px;
-            color: #8892b0;
-            font-weight: 500;
-        }
-        
-        .form-input,
-        .form-select {
-            width: 100%;
-            padding: 12px;
-            background: rgba(42, 47, 74, 0.3);
-            border: 1px solid #2a2f4a;
-            border-radius: 8px;
-            color: #ffffff;
-            font-size: 14px;
-        }
-        
-        .form-input:focus,
-        .form-select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .loading {
-            text-align: center;
-            color: #8892b0;
-            padding: 20px;
-            font-style: italic;
-        }
-        
-        .alert {
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 16px;
-            font-size: 14px;
-        }
-        
-        .alert-success {
-            background: rgba(16, 185, 129, 0.1);
-            color: #10b981;
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
-        
-        .alert-error {
-            background: rgba(239, 68, 68, 0.1);
-            color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-        
-        .page {
-            display: none;
-        }
-        
-        .page.active {
-            display: block;
+  <meta charset="UTF-8">
+  <title>Industrial Crypto Trading Dashboard</title>
+  <link rel="stylesheet" href="static/css/dashboard.css">
+  <!-- Add your CSS links here -->
+</head>
+<body>
+  <!-- Main Alert -->
+  <div id="main-alert" class="alert" style="display:none;"></div>
+
+  <!-- Trading Section -->
+  <section>
+    <h2>Trade</h2>
+    <form id="trade-form" onsubmit="executeTrade(event)">
+      <select id="trade-symbol" name="symbol"></select>
+      <select name="side">
+        <option value="buy">Buy</option>
+        <option value="sell">Sell</option>
+      </select>
+      <input type="number" step="any" name="amount" placeholder="Amount" required>
+      <input type="number" step="any" name="price" placeholder="Price (optional)">
+      <button type="submit">Submit Trade</button>
+    </form>
+  </section>
+
+  <!-- Positions Section -->
+  <section>
+    <h2>Positions</h2>
+    <div id="positions-content"></div>
+  </section>
+
+  <!-- Crypto Market -->
+  <section>
+    <h2>Market</h2>
+    <div id="crypto-grid"></div>
+  </section>
+
+  <!-- Strategies Section -->
+  <section>
+    <h2>Strategies</h2>
+    <div id="strategies-content"></div>
+  </section>
+
+  <!-- ML Training Section -->
+  <section>
+    <h2>Machine Learning</h2>
+    <form id="ml-train-form" onsubmit="trainMLModel(event)">
+      <input type="number" name="days" placeholder="Training window (days)" required>
+      <button type="submit">Train Model</button>
+    </form>
+    <div id="training-progress" style="display:none;">
+      <div id="progress-fill" style="width:0%;height:20px;background:green;"></div>
+      <div id="training-status"></div>
+    </div>
+    <div>
+      <span>Model Status: <span id="model-status"></span></span>
+      <span>Last Training: <span id="last-training"></span></span>
+      <span>Accuracy: <span id="model-accuracy"></span></span>
+    </div>
+  </section>
+
+  <!-- Analytics Section -->
+  <section>
+    <h2>Analytics</h2>
+    <div id="analytics-summary"></div>
+  </section>
+
+  <!-- Bot Control -->
+  <section>
+    <h2>Bot Control</h2>
+    <span id="bot-status" class="status-indicator status-stopped">● Stopped</span>
+    <button id="toggle-bot" class="btn btn-success" onclick="toggleBot()">Start Bot</button>
+    <button onclick="syncData()">Sync Data</button>
+  </section>
+
+  <!-- Chat Section -->
+  <section>
+    <h2>Chat</h2>
+    <div id="chat-messages" style="height:200px;overflow-y:auto;background:#f7f7f7;padding:8px;margin-bottom:8px;"></div>
+    <input id="chat-input" type="text" placeholder="Type a message..." onkeypress="handleChatKeyPress(event)">
+    <button onclick="sendChatMessage()">Send</button>
+  </section>
+
+  <!-- Scripts -->
+  <script src="static/js/dashboard.js"></script>
+  <script>
+    // Initial page load logic
+    document.addEventListener('DOMContentLoaded', () => {
+      loadTradingData();
+      loadPositions();
+      loadCryptoMarket();
+      loadStrategies();
+      loadMLStatus();
+      loadAnalytics();
+    });
+  </script>
+</body>
+</html>
