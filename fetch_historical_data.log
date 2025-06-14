@@ -1,0 +1,24 @@
+2025-05-31 14:31:47,476 - INFO - Fetching data for bitcoin/usd over 30 days
+2025-05-31 14:31:48,058 - INFO - Saved historical data to E:/Trade Chat Bot/historical_prices.csv
+2025-06-02 22:40:33,657 - INFO - Fetching data for bitcoin/usd over 30 days
+2025-06-02 22:40:33,932 - INFO - Saved historical data for bitcoin to E:/Trade Chat Bot/historical_prices_bitcoin.csv
+2025-06-02 22:40:35,933 - INFO - Fetching data for ethereum/usd over 30 days
+2025-06-02 22:40:36,114 - INFO - Saved historical data for ethereum to E:/Trade Chat Bot/historical_prices_ethereum.csv
+2025-06-02 22:40:38,115 - INFO - Fetching data for cardano/usd over 30 days
+2025-06-02 22:40:38,278 - INFO - Saved historical data for cardano to E:/Trade Chat Bot/historical_prices_cardano.csv
+2025-06-02 22:40:40,280 - INFO - Fetching data for solana/usd over 30 days
+2025-06-02 22:40:40,453 - INFO - Saved historical data for solana to E:/Trade Chat Bot/historical_prices_solana.csv
+2025-06-02 22:40:42,455 - INFO - Fetching data for sui/usd over 30 days
+2025-06-02 22:40:42,664 - INFO - Saved historical data for sui to E:/Trade Chat Bot/historical_prices_sui.csv
+2025-06-02 22:40:44,666 - INFO - Fetching data for shiba-inu/usd over 30 days
+2025-06-02 22:40:44,732 - WARNING - Rate limit hit for shiba-inu. Retrying in 5 seconds... (Attempt 1/3)
+2025-06-02 22:40:49,733 - INFO - Fetching data for shiba-inu/usd over 30 days
+2025-06-02 22:40:49,804 - WARNING - Rate limit hit for shiba-inu. Retrying in 5 seconds... (Attempt 2/3)
+2025-06-02 22:40:54,806 - INFO - Fetching data for shiba-inu/usd over 30 days
+2025-06-02 22:40:54,881 - WARNING - Rate limit hit for shiba-inu. Retrying in 5 seconds... (Attempt 3/3)
+2025-06-02 22:41:01,882 - INFO - Fetching data for ripple/usd over 30 days
+2025-06-02 22:41:02,257 - WARNING - Rate limit hit for ripple. Retrying in 5 seconds... (Attempt 1/3)
+2025-06-02 22:41:07,259 - INFO - Fetching data for ripple/usd over 30 days
+2025-06-02 22:41:07,311 - WARNING - Rate limit hit for ripple. Retrying in 5 seconds... (Attempt 2/3)
+2025-06-02 22:41:12,313 - INFO - Fetching data for ripple/usd over 30 days
+2025-06-02 22:41:12,391 - WARNING - Rate limit hit for ripple. Retrying in 5 seconds... (Attempt 3/3)
