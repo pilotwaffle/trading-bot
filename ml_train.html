@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ML Training & Prediction</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .tabs { margin-bottom: 25px; }
+        .tab { display: inline-block; padding: 10px 18px; margin-right: 4px; background: #eee; border-top-left-radius: 8px; border-top-right-radius: 8px; cursor: pointer; }
+        .tab.active { background: #fff; border-bottom: 2px solid #fff; font-weight: bold; }
+        .section { display: none; border: 1px solid #eee; border-radius: 8px; padding: 20px; background: #fff; }
+        .section.active { display: block; }
+        select, input[type="file"], button, input[type="text"] { padding: 6px; margin-top: 4px; margin-bottom: 10px; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        #progress-log { white-space: pre; background: #f5f5f5; border: 1px solid #ddd; padding: 10px; margin-top: 10px; border-radius: 5px; min-height: 80px; }
+        label { display: block; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <h1>ML Model Training & Prediction</h1>
+    <div class="tabs">
+        <div class="tab active" id="tab-train" onclick="showTab('train')">Train</div>
+        <div class="tab" id="tab-predict" onclick="showTab('predict')">Predict</div>
+    </div>
+
+    <!-- Train Section -->
+    <div class="section active" id="section-train">
+        <h2>Upload CSV File</h2>
+        <form action="/ml/upload" enctype="multipart/form-data" method="post">
+            <label for="file">Choose CSV file:</label>
+            <input name="file" type="file" accept=".csv" required>
+            <button type="submit">Upload</button>
+        </form>
+        {% if uploaded %}
+            <div class="success">Uploaded successfully!</div>
+        {% elif upload_error %}
+            <div class="error">Error: {{ upload_error }}</div>
+        {% endif %}
+
+        <h2>Train Model</h2>
+        <form action="/ml/train" method="post">
+            <label for="model">Choose Model:</label>
+            <select name="model" id="model" required>
+                {% for m in models %}
+                <option value="{{ m }}">{{ m }}</option>
+                {% endfor %}
+            </select>
+            <label for="datafile">Training CSV File:</label>
+            <select name="datafile" id="datafile" required>
+                {% for f in data_files %}
+                <option value="{{ f }}">{{ f }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Start Training</button>
+        </form>
+        {% if train_status %}
+            <div class="success">{{ train_status }}</div>
+        {% endif %}
+
+        <h2>Training Progress Log</h2>
+        <div id="progress-log">Loading progress...</div>
+    </div>
+
+    <!-- Predict Section -->
+    <div class="section" id="section-predict">
+        <h2>Make a Prediction</h2>
+        <form action="/ml/predict" method="post" id="predict-form">
+            <label for="modelfile">Select Trained Model:</label>
+            <select name="modelfile" id="modelfile" required>
+                {% for f in model_files %}
+                <option value="{{ f }}">{{ f }}</option>
+                {% endfor %}
+            </select>
+            <label for="features">Enter Features (comma-separated):</label>
+            <input type="text" name="features" id="features" required placeholder="e.g. 0.3, 1.5, 2.7, 0.9">
+            <button type="submit">Predict</button>
+        </form>
+        {% if predict_result %}
+            <div class="success">{{ predict_result }}</div>
+        {% elif predict_error %}
+            <div class="error">{{ predict_error }}</div>
+        {% endif %}
+    </div>
+
+    <script>
+    // Tab switching
+    function showTab(tab) {
+        document.getElementById('tab-train').classList.remove('active');
+        document.getElementById('tab-predict').classList.remove('active');
+        document.getElementById('section-train').classList.remove('active');
+        document.getElementById('section-predict').classList.remove('active');
+        if(tab === 'train') {
+            document.getElementById('tab-train').classList.add('active');
+            document.getElementById('section-train').classList.add('active');
+        } else {
+            document.getElementById('tab-predict').classList.add('active');
+            document.getElementById('section-predict').classList.add('active');
+        }
+    }
+
+    // Live polling for training log
+    function fetchLog() {
+        // Autoselect model from form for log polling
+        var model = document.getElementById('model');
+        var modelName = model ? model.value : "";
+        if (!modelName) { modelName = "Random Forest"; }
+        fetch('/ml/logs?model=' + encodeURIComponent(modelName))
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('progress-log').textContent = data.log;
+            });
+    }
+    setInterval(fetchLog, 1000);
+    fetchLog();
+
+    // Optional: Retain tab after POST (if errors/results returned)
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if predict_result or predict_error %}
+            showTab('predict');
+        {% endif %}
+    });
+    </script>
+</body>
+</html>

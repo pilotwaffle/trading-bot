@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ML Model Prediction</title>
+</head>
+<body>
+    <h2>ML Model Prediction</h2>
+    <form method="post" action="/ml/predict">
+        <label for="modelfile">Model:</label>
+        <select name="modelfile" id="modelfile">
+            {% for f in model_files %}
+                <option value="{{ f }}">{{ f }}</option>
+            {% endfor %}
+        </select>
+        <label for="features">Features (CSV):</label>
+        <input type="text" name="features" id="features" placeholder="e.g. 0.1,0.2,0.3,0.4">
+        <button type="submit">Predict</button>
+    </form>
+    {% if predict_result %}
+        <div style="color:green;margin-top:8px;">{{ predict_result }}</div>
+    {% endif %}
+    {% if predict_error %}
+        <div style="color:red;margin-top:8px;">Error: {{ predict_error }}</div>
+    {% endif %}
+</body>
+</html>
