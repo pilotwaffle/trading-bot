@@ -22,3 +22,39 @@
 2025-06-02 22:41:07,311 - WARNING - Rate limit hit for ripple. Retrying in 5 seconds... (Attempt 2/3)
 2025-06-02 22:41:12,313 - INFO - Fetching data for ripple/usd over 30 days
 2025-06-02 22:41:12,391 - WARNING - Rate limit hit for ripple. Retrying in 5 seconds... (Attempt 3/3)
+2025-06-14 18:11:30,410 - INFO - Fetching data for bitcoin/usd over 30 days
+2025-06-14 18:11:30,742 - INFO - Saved historical data for bitcoin to E:/Trade Chat Bot/historical_prices_bitcoin.csv
+2025-06-14 18:11:32,744 - INFO - Fetching data for ethereum/usd over 30 days
+2025-06-14 18:11:32,933 - INFO - Saved historical data for ethereum to E:/Trade Chat Bot/historical_prices_ethereum.csv
+2025-06-14 18:11:34,948 - INFO - Fetching data for cardano/usd over 30 days
+2025-06-14 18:11:35,145 - INFO - Saved historical data for cardano to E:/Trade Chat Bot/historical_prices_cardano.csv
+2025-06-14 18:11:37,150 - INFO - Fetching data for solana/usd over 30 days
+2025-06-14 18:11:37,361 - INFO - Saved historical data for solana to E:/Trade Chat Bot/historical_prices_solana.csv
+2025-06-14 18:11:39,368 - INFO - Fetching data for sui/usd over 30 days
+2025-06-14 18:11:39,665 - INFO - Saved historical data for sui to E:/Trade Chat Bot/historical_prices_sui.csv
+2025-06-14 18:11:41,670 - INFO - Fetching data for shiba-inu/usd over 30 days
+2025-06-14 18:11:41,729 - WARNING - Rate limit hit for shiba-inu. Retrying in 5 seconds... (Attempt 1/3)
+2025-06-14 18:11:46,745 - INFO - Fetching data for shiba-inu/usd over 30 days
+2025-06-14 18:11:46,819 - WARNING - Rate limit hit for shiba-inu. Retrying in 5 seconds... (Attempt 2/3)
+2025-06-14 18:11:51,821 - INFO - Fetching data for shiba-inu/usd over 30 days
+2025-06-14 18:11:51,894 - WARNING - Rate limit hit for shiba-inu. Retrying in 5 seconds... (Attempt 3/3)
+2025-06-14 18:11:58,897 - INFO - Fetching data for ripple/usd over 30 days
+2025-06-14 18:11:58,945 - WARNING - Rate limit hit for ripple. Retrying in 5 seconds... (Attempt 1/3)
+2025-06-14 18:12:03,960 - INFO - Fetching data for ripple/usd over 30 days
+2025-06-14 18:12:04,011 - WARNING - Rate limit hit for ripple. Retrying in 5 seconds... (Attempt 2/3)
+2025-06-14 18:12:09,021 - INFO - Fetching data for ripple/usd over 30 days
+2025-06-14 18:12:09,073 - WARNING - Rate limit hit for ripple. Retrying in 5 seconds... (Attempt 3/3)
+2025-06-14 18:13:50,976 - INFO - Fetching data for bitcoin/usd over 30 days (Attempt 1/3)
+2025-06-14 18:13:51,130 - INFO - Saved historical data for bitcoin to E:/Trade Chat Bot/historical_prices_bitcoin.csv
+2025-06-14 18:14:06,133 - INFO - Fetching data for ethereum/usd over 30 days (Attempt 1/3)
+2025-06-14 18:14:06,334 - INFO - Saved historical data for ethereum to E:/Trade Chat Bot/historical_prices_ethereum.csv
+2025-06-14 18:14:21,337 - INFO - Fetching data for cardano/usd over 30 days (Attempt 1/3)
+2025-06-14 18:14:21,525 - INFO - Saved historical data for cardano to E:/Trade Chat Bot/historical_prices_cardano.csv
+2025-06-14 18:14:36,531 - INFO - Fetching data for solana/usd over 30 days (Attempt 1/3)
+2025-06-14 18:14:36,682 - INFO - Saved historical data for solana to E:/Trade Chat Bot/historical_prices_solana.csv
+2025-06-14 18:14:51,688 - INFO - Fetching data for sui/usd over 30 days (Attempt 1/3)
+2025-06-14 18:14:51,897 - INFO - Saved historical data for sui to E:/Trade Chat Bot/historical_prices_sui.csv
+2025-06-14 18:15:06,905 - INFO - Fetching data for shiba-inu/usd over 30 days (Attempt 1/3)
+2025-06-14 18:15:07,241 - INFO - Saved historical data for shiba-inu to E:/Trade Chat Bot/historical_prices_shiba-inu.csv
+2025-06-14 18:15:22,244 - INFO - Fetching data for ripple/usd over 30 days (Attempt 1/3)
+2025-06-14 18:15:22,441 - INFO - Saved historical data for ripple to E:/Trade Chat Bot/historical_prices_ripple.csv

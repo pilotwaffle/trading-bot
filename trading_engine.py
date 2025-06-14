@@ -58,10 +58,13 @@ class CryptoDataFetcher:
 
     def _load_supported_symbols(self):
         """
-        Dynamically load supported symbols from all exchanges at runtime.
-        Returns a sorted list of unique symbols from all enabled exchanges.
+        Load a limited set of supported symbols based on intersection with exchanges.
         """
         logger.info("Loading supported trading symbols from exchanges...")
+        # Limit symbols to these base/quote pairs:
+        base_assets = ['BTC', 'ADA', 'ETH', 'LINK', 'DOT', 'SHIB', 'PI', 'UNI', 'XRP', 'DOGE', 'SOL', 'SUI']
+        quote_assets = ['USD', 'USDT', 'USDC']
+        desired = set(f"{b}/{q}" for b in base_assets for q in quote_assets)
         symbols_per_exchange = []
         for name, exchange in self.exchanges.items():
             try:
@@ -73,8 +76,9 @@ class CryptoDataFetcher:
                 logger.warning(f"Failed to load markets for {name}: {e}")
         if symbols_per_exchange:
             supported_symbols = set.union(*symbols_per_exchange)
-            logger.info(f"Final supported symbols: {sorted(list(supported_symbols))}")
-            return sorted(list(supported_symbols))
+            limited = sorted(list(desired & supported_symbols))
+            logger.info(f"Final limited symbol list: {limited}")
+            return limited
         return []
 
     def get_crypto_prices(self) -> Dict[str, MarketData]:
@@ -395,7 +399,8 @@ class IndustrialTradingEngine:
 
     def execute_strategy(self, strategy: TradingStrategy):
         for symbol, market_data in self.current_market_data.items():
-            historical_data = self.db.get_historical_data(symbol.replace('/', ''))
+            # FIX: Use symbol as is for DB lookup, do NOT remove the slash
+            historical_data = self.db.get_historical_data(symbol)
             if len(historical_data) < 10:
                 continue
             if symbol not in self.positions and strategy.should_buy(market_data, historical_data):
@@ -459,7 +464,8 @@ class IndustrialTradingEngine:
     def train_ml_model(self):
         historical_data = {}
         for symbol in self.data_fetcher.symbols:
-            data = self.db.get_historical_data(symbol.replace('/', ''))
+            # FIX: Use symbol as is for DB lookup, do NOT remove the slash
+            data = self.db.get_historical_data(symbol)
             if len(data) > 50:
                 historical_data[symbol] = data
         if historical_data:

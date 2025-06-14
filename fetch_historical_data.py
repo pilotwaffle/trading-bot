@@ -20,7 +20,7 @@ def fetch_historical_data(
     days=30,
     retries=3,
     delay=5,
-    request_interval=2
+    request_interval=15   # Increased to avoid CoinGecko rate limits
 ):
     """
     Fetch historical price data from CoinGecko for multiple coins and save to CSVs.
@@ -44,13 +44,11 @@ def fetch_historical_data(
             try:
                 url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
                 params = {'vs_currency': vs_currency, 'days': days}
-                logger.info(f"Fetching data for {coin_id}/{vs_currency} over {days} days")
+                logger.info(f"Fetching data for {coin_id}/{vs_currency} over {days} days (Attempt {attempt + 1}/{retries})")
                 
-                response = requests.get(url, params=params, timeout=10)
+                response = requests.get(url, params=params, timeout=15)
                 response.raise_for_status()
-                
                 data = response.json()
-                logger.debug(f"API response for {coin_id}: {data}")
                 
                 if 'prices' not in data:
                     logger.error(f"No 'prices' key in response for {coin_id}. Response: {data}")
@@ -58,14 +56,22 @@ def fetch_historical_data(
                 
                 prices = pd.DataFrame(data['prices'], columns=['timestamp', 'price'])
                 prices['timestamp'] = pd.to_datetime(prices['timestamp'], unit='ms')
-                
+
+                # Optionally, include volume if present
+                if 'total_volumes' in data and len(data['total_volumes']) == len(prices):
+                    prices['volume'] = [v[1] for v in data['total_volumes']]
+                else:
+                    prices['volume'] = 0
+
                 output_path = f"{base_path}{coin_id}.csv"
                 prices.to_csv(output_path, index=False)
                 logger.info(f"Saved historical data for {coin_id} to {output_path}")
                 break  # Success, move to next coin
-                
+
             except requests.exceptions.HTTPError as e:
-                if response.status_code == 429:
+                status = getattr(response, 'status_code', None)
+                # 429 = Too Many Requests (rate limit)
+                if status == 429 or 'rate limit' in str(e).lower():
                     logger.warning(f"Rate limit hit for {coin_id}. Retrying in {delay} seconds... (Attempt {attempt + 1}/{retries})")
                     time.sleep(delay)
                     continue
@@ -76,8 +82,8 @@ def fetch_historical_data(
                 logger.error(f"Error fetching data for {coin_id}: {e}")
                 success = False
                 break
-        
-        # Avoid rate limits between coins
+
+        # Avoid rate limits between coins (increase if you still hit limits)
         time.sleep(request_interval)
     
     return success
