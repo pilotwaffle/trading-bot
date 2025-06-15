@@ -5,8 +5,17 @@ import traceback
 from datetime import datetime
 from typing import List, Optional, Dict
 
-from fastapi import FastAPI, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI
+from app.api_extra_routes import router as extra_api_router
+
+app = FastAPI()
+
+# ... your other routes and routers here ...
+
+# Register the new routes
+app.include_router(extra_api_router)
+
+# ... the rest of your FastAPI setup ...from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.security import HTTPBasic, HTTPBasicCredentials

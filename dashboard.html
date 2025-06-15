@@ -1,117 +1,155 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Industrial Crypto Trading Bot Dashboard</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin:30px; background:#f4f4f4;}
-        .container { max-width:900px; margin:auto; background:white; padding:30px; border-radius:8px; box-shadow:0 2px 8px #ccc;}
-        h1 { color:#333; }
-        .section { margin:24px 0; }
-        .positions-table, .market-table { border-collapse: collapse; width:100%; }
-        .positions-table th, .market-table th, .positions-table td, .market-table td {
-            padding:8px; border:1px solid #ddd;
-        }
-        .positions-table th, .market-table th { background: #e8e8e8;}
-    </style>
+  <meta charset="UTF-8">
+  <title>Industrial Crypto Trading Dashboard</title>
+  <link rel="stylesheet" href="static/css/dashboard.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Industrial Crypto Trading Bot Dashboard</h1>
-        <div class="section">
-            <h2>Status</h2>
-            <div id="status"></div>
-        </div>
-        <div class="section">
-            <h2>Open Positions</h2>
-            <table class="positions-table" id="positions">
-                <thead>
-                    <tr>
-                        <th>Symbol</th><th>Amount</th><th>Entry Price</th><th>Current Price</th><th>P&L</th><th>Side</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-        <div class="section">
-            <h2>Market Data</h2>
-            <table class="market-table" id="market-data">
-                <thead>
-                    <tr>
-                        <th>Symbol</th><th>Price</th><th>Volume</th><th>24h Change</th><th>Time</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-        <div class="section">
-            <h2>Chat Bot</h2>
-            <input id="chat-input" style="width:400px;" placeholder="Type command (e.g., status, buy BTC/USD 100)" />
-            <button onclick="sendChat()">Send</button>
-            <pre id="chat-response" style="background:#fafafa; border:1px solid #ddd; padding:10px; margin-top:10px;"></pre>
-        </div>
+  <!-- Main Alert -->
+  <div id="main-alert" class="alert" style="display:none;"></div>
+
+  <!-- Tab Navigation -->
+  <nav class="dashboard-tabs">
+    <button class="tab-btn active" onclick="showTab('dashboard')">Dashboard</button>
+    <button class="tab-btn" onclick="showTab('ml-train')">Train Bot</button>
+    <button class="tab-btn" onclick="showTab('crypto-prices')">Crypto Prices</button>
+    <button class="tab-btn" onclick="showTab('system-status')">System Status</button>
+  </nav>
+
+  <!-- Dashboard Main Content -->
+  <section id="tab-dashboard" class="tab-content active">
+    <!-- Trading Section -->
+    <section>
+      <h2>Trade</h2>
+      <form id="trade-form" onsubmit="executeTrade(event)">
+        <select id="trade-symbol" name="symbol"></select>
+        <select name="side">
+          <option value="buy">Buy</option>
+          <option value="sell">Sell</option>
+        </select>
+        <input type="number" step="any" name="amount" placeholder="Amount" required>
+        <input type="number" step="any" name="price" placeholder="Price (optional)">
+        <button type="submit">Submit Trade</button>
+      </form>
+    </section>
+
+    <!-- Positions Section -->
+    <section>
+      <h2>Positions</h2>
+      <div id="positions-content"></div>
+    </section>
+
+    <!-- Crypto Market -->
+    <section>
+      <h2>Market</h2>
+      <div id="crypto-grid"></div>
+    </section>
+
+    <!-- Strategies Section -->
+    <section>
+      <h2>Strategies</h2>
+      <div id="strategies-content"></div>
+    </section>
+
+    <!-- Analytics Section -->
+    <section>
+      <h2>Analytics</h2>
+      <div id="analytics-summary"></div>
+    </section>
+
+    <!-- Bot Control -->
+    <section>
+      <h2>Bot Control</h2>
+      <span id="bot-status" class="status-indicator status-stopped">● Stopped</span>
+      <button id="toggle-bot" class="btn btn-success" onclick="toggleBot()">Start Bot</button>
+      <button onclick="syncData()">Sync Data</button>
+    </section>
+
+    <!-- Chat Section -->
+    <section>
+      <h2>Chat</h2>
+      <div id="chat-messages" style="height:200px;overflow-y:auto;background:#f7f7f7;padding:8px;margin-bottom:8px;"></div>
+      <input id="chat-input" type="text" placeholder="Type a message..." onkeypress="handleChatKeyPress(event)">
+      <button onclick="sendChatMessage()">Send</button>
+    </section>
+  </section>
+
+  <!-- ML Training Tab -->
+  <section id="tab-ml-train" class="tab-content">
+    <h2>Train Bot</h2>
+    <form id="training-form">
+      <label for="training-type">Training Type:</label>
+      <select id="training-type">
+        <option value="supervised">Supervised Learning</option>
+        <option value="reinforcement">Reinforcement Learning</option>
+        <option value="deep">Deep Learning</option>
+      </select>
+      <label for="training-symbol">Symbol:</label>
+      <select id="training-symbol">
+        <option value="BTC">BTC</option>
+        <option value="ETH">ETH</option>
+        <option value="SOL">SOL</option>
+        <option value="DOGE">DOGE</option>
+      </select>
+      <label for="training-window">Window Size:</label>
+      <select id="training-window">
+        <option value="7">7 days</option>
+        <option value="14">14 days</option>
+        <option value="30">30 days</option>
+        <option value="90">90 days</option>
+      </select>
+      <button type="submit">Start Training</button>
+    </form>
+    <div class="training-status">
+      <h3>Status</h3>
+      <div id="training-status-text">Idle</div>
+      <div class="progress-bar">
+        <div id="training-progress-bar" style="width:0%"></div>
+      </div>
     </div>
-<script>
-async function fetchStatus() {
-    const resp = await fetch("/api/performance", {headers:{Authorization:'Basic '+btoa('admin:admin123')}});
-    const stat = await resp.json();
-    document.getElementById('status').innerHTML = `
-        <b>Total Value:</b> $${stat.total_value?.toFixed(2)}<br>
-        <b>Cash Balance:</b> $${stat.cash_balance?.toFixed(2)}<br>
-        <b>Unrealized P&L:</b> $${stat.unrealized_pnl?.toFixed(2)}<br>
-        <b>Total Profit:</b> $${stat.total_profit?.toFixed(2)}<br>
-        <b>Return:</b> ${stat.total_return_percentage?.toFixed(2)}%
-    `;
-}
-async function fetchPositions() {
-    const resp = await fetch("/api/positions", {headers:{Authorization:'Basic '+btoa('admin:admin123')}});
-    const pos = await resp.json();
-    let html = '';
-    (pos.positions||[]).forEach(p=>{
-        html += `<tr>
-            <td>${p.symbol}</td>
-            <td>${p.amount}</td>
-            <td>${p.entry_price}</td>
-            <td>${p.current_price}</td>
-            <td>${p.unrealized_pnl}</td>
-            <td>${p.side}</td>
-        </tr>`;
-    });
-    document.querySelector("#positions tbody").innerHTML = html;
-}
-async function fetchMarket() {
-    const resp = await fetch("/api/market-data", {headers:{Authorization:'Basic '+btoa('admin:admin123')}});
-    const data = await resp.json();
-    let html = '';
-    Object.values(data.market_data||{}).forEach(row=>{
-        html += `<tr>
-            <td>${row.symbol}</td>
-            <td>${row.price}</td>
-            <td>${row.volume}</td>
-            <td>${row.change_24h}</td>
-            <td>${row.timestamp}</td>
-        </tr>`;
-    });
-    document.querySelector("#market-data tbody").innerHTML = html;
-}
-async function sendChat() {
-    let txt = document.getElementById('chat-input').value;
-    if (!txt) return;
-    document.getElementById('chat-response').innerText = "Loading...";
-    const resp = await fetch("/api/chat", {
-        method:"POST",
-        headers:{
-            "Content-Type":"application/json",
-            Authorization:'Basic '+btoa('admin:admin123')
-        },
-        body:JSON.stringify({message:txt})
-    });
-    const data = await resp.json();
-    document.getElementById('chat-response').innerText = data.response;
-}
-setInterval(fetchStatus, 5000);
-setInterval(fetchPositions, 5000);
-setInterval(fetchMarket, 5000);
-fetchStatus();fetchPositions();fetchMarket();
-</script>
+    <div>
+      <span>Model Status: <span id="model-status"></span></span>
+      <span>Last Training: <span id="last-training"></span></span>
+      <span>Accuracy: <span id="model-accuracy"></span></span>
+    </div>
+  </section>
+
+  <!-- Crypto Prices Tab -->
+  <section id="tab-crypto-prices" class="tab-content">
+    <h2>Crypto Prices</h2>
+    <label for="price-provider">Price Provider:</label>
+    <select id="price-provider" onchange="loadCryptoPrices()">
+      <option value="coingecko">CoinGecko</option>
+      <option value="coinmarketcap">CoinMarketCap</option>
+    </select>
+    <table id="crypto-table">
+      <thead>
+        <tr>
+          <th>Symbol</th>
+          <th>Name</th>
+          <th>Price (USD)</th>
+          <th>24h Change</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Prices populated by JS -->
+      </tbody>
+    </table>
+  </section>
+
+  <!-- System Status Tab -->
+  <section id="tab-system-status" class="tab-content">
+    <h2>System Status</h2>
+    <div>
+      <strong>Alpaca Connection (<span id="alpaca-api-url">https://paper-api.alpaca.markets</span>):</strong>
+      <span id="alpaca-status" class="status-dot status-offline"></span>
+      <span id="alpaca-status-text">Checking...</span>
+    </div>
+    <div id="alpaca-account-status"></div>
+  </section>
+
+  <!-- Scripts -->
+  <script src="static/js/dashboard.js"></script>
 </body>
 </html>
