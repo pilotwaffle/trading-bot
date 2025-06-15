@@ -1,0 +1,74 @@
+# Multi-stage build for optimized FastAPI trading bot image
+
+FROM python:3.10-slim as builder
+
+WORKDIR /app
+
+# Install build dependencies for scientific/TA/ML packages
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    git \
+    curl \
+    libffi-dev \
+    libssl-dev \
+    libxml2-dev \
+    libxslt1-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libopenblas-dev \
+    liblapack-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+
+# Pre-build all wheels for dependencies
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
+
+# --- Final Runtime Image ---
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install minimal runtime libraries needed by numpy/pandas/TA-lib, etc.
+RUN apt-get update && apt-get install -y \
+    curl \
+    libopenblas-base \
+    libgomp1 \
+    liblapack3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for security
+RUN groupadd -r trading && useradd -r -g trading trading
+
+# Copy built wheels and install dependencies
+COPY --from=builder /app/wheels /wheels
+RUN pip install --no-cache /wheels/*
+
+# Copy application code and set permissions
+COPY --chown=trading:trading . .
+
+# Create necessary directories and set permissions
+RUN mkdir -p /app/data /app/logs /app/backups /app/models \
+    && chown -R trading:trading /app
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app \
+    TZ=UTC
+
+USER trading
+
+# Expose the FastAPI/Uvicorn port
+EXPOSE 8000
+
+# Health check for FastAPI
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl --fail http://localhost:8000/health || exit 1
+
+# Default command to run FastAPI with Uvicorn
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# Alternative commands:
+# For backtesting: CMD ["python", "main.py", "--backtest"]
+# For optimization: CMD ["python", "main.py", "--optimize"]
