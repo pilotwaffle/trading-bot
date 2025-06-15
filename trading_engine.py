@@ -1,4 +1,15 @@
 import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler("trade_bot_dashboard.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
 import sqlite3
 import threading
 import time
@@ -10,10 +21,10 @@ import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 import ccxt
+from dotenv import load_dotenv
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# --- Load environment variables ---
+load_dotenv()
 
 @dataclass
 class Trade:
@@ -42,6 +53,8 @@ class MarketData:
     volume: float
     change_24h: float
     timestamp: datetime
+
+# ... rest of your file unchanged ...
 
 class CryptoDataFetcher:
     """Real-time crypto data fetcher using multiple sources"""
