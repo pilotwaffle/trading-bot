@@ -24,6 +24,10 @@ logger = logging.getLogger(__name__)
 # --- App initialization ---
 app = FastAPI(title="Industrial Crypto Trading Bot", version="2.0.0")
 
+# --- Include Alpaca Status router ---
+from api.alpaca_status import router as alpaca_status_router
+app.include_router(alpaca_status_router)
+
 # --- CORS Middleware ---
 app.add_middleware(
     CORSMiddleware,
